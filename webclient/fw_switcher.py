@@ -1,0 +1,106 @@
+from contextlib import contextmanager
+from enum import Enum
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+
+from env import (
+    host,
+    username,
+    password
+)
+
+
+class FirewallLevel(Enum):
+    high = 3
+    # medium = 2
+    low = 1
+    off = 0
+    loading = -1
+
+
+def logout(driver):
+    logout_link = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, 'LogOffLnk'))
+    )
+    logout_link.click()
+
+
+@contextmanager
+def create_driver():
+    options = Options()
+    options.add_argument("--headless=new")
+    options.add_argument("--ignore-certificate-errors")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    service = Service()
+    driver = webdriver.Chrome(service=service, options=options)
+    try:
+        yield driver
+        logout(driver)
+    finally:
+        driver.quit()
+
+
+def goto_firewall_settings(driver):
+    driver.get(f"http://{host}/")
+
+    username_input = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, "Frm_Username"))
+    )
+    password_input = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, "Frm_Password"))
+    )
+    login_button = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, 'LoginId'))
+    )
+
+    username_input.send_keys(username)
+    password_input.send_keys(password)
+    login_button.click()
+
+    internet_tab = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, 'internet'))
+    )
+    internet_tab.click()
+
+    security_menu = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.ID, 'securityv2'))
+    )
+    security_menu.click()
+
+
+def retrieve_firewall_levels(driver) -> FirewallLevel | None:
+    selected_option = WebDriverWait(driver, 10).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, 'input[type="radio"][name="Level"]:checked'))
+    )
+
+    value = selected_option.get_attribute("value")
+    return FirewallLevel(int(value)) if value else None
+
+
+def get_current_firewall_level() -> FirewallLevel | None:
+    with create_driver() as driver:
+        goto_firewall_settings(driver)
+        return retrieve_firewall_levels(driver)
+
+
+def set_firewall_level(level: FirewallLevel) -> FirewallLevel | None:
+    with create_driver() as driver:
+        goto_firewall_settings(driver)
+
+        option = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, f'Level{level.value}'))
+        )
+        option.click()
+
+        apply_button = WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located((By.ID, 'Btn_apply_FirewallConf'))
+        )
+        apply_button.click()
+
+        return retrieve_firewall_levels(driver)

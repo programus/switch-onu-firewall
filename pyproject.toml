@@ -1,0 +1,10 @@
+[project]
+name = "switch-onu-firewall"
+version = "0.1.0"
+description = "Switch ONU Firewall"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "nicegui>=2.24.2",
+    "selenium>=4.35.0",
+]
