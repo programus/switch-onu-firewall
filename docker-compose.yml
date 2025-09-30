@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    platform: linux/amd64
+    image: programus/switch-onu-firewall:latest
+    shm_size: 2g
+    container_name: switch-onu-firewall
+    ports:
+      - "8080:8080"
