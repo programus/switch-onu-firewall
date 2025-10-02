@@ -1,13 +1,10 @@
+import asyncio
 from nicegui import (
     ui,
-    app,
 )
+
 from webclient import fw_switcher
-from env import (
-    listen_host,
-    listen_port,
-)
-import asyncio
+from config import webui
 
 
 current_level = fw_switcher.FirewallLevel.loading
@@ -64,4 +61,4 @@ def main_page():
 
 
 def start_webui():
-    ui.run(title="Switch ONU Firewall", host=listen_host, port=listen_port)
+    ui.run(title="Switch ONU Firewall", host=webui.host, port=webui.port)
