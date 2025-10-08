@@ -18,5 +18,14 @@ class WebUISetting(BaseSettings):
     port: int = 8080
 
 
+class AppSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file='.env', env_file_encoding='utf-8', extra='ignore', env_prefix='APP_')
+
+    username: str = 'admin'
+    password: str = 'Passw0rd!'
+    storage_secret: str = 'change_this_to_a_random_secret'
+
+
 onu = OnuSetting()
 webui = WebUISetting()
+app = AppSettings()

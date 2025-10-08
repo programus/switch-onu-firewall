@@ -1,14 +1,22 @@
 import asyncio
+from typing import Optional
 from nicegui import (
     ui,
+    app,
 )
+from fastapi.responses import RedirectResponse
 
+from gui.middleware import AuthMiddleware
 from webclient import fw_switcher
-from config import webui
+from config import (
+    webui,
+    app as app_settings,
+)
 
 
 current_level = fw_switcher.FirewallLevel.loading
 
+app.add_middleware(AuthMiddleware)
 
 @ui.refreshable
 def update_firewall_level():
@@ -53,12 +61,41 @@ async def set_firewall_level(level: fw_switcher.FirewallLevel):
 
 @ui.page('/')
 def main_page():
+    def logout():
+        app.storage.user.clear()
+        ui.navigate.to('/login')
     global current_level
     current_level = fw_switcher.FirewallLevel.loading
-    ui.label("Switch ONU Firewall Level").classes("text-2xl font-bold mb-4")
-    update_firewall_level()
+    with ui.header().classes("justify-between items-center w-full"):
+        ui.markdown(f"**Switch ONU Firewall Level** - _{app.storage.user.get('username')}_")
+        ui.button("Logout", color='negative', on_click=logout).classes("").props('flat')
+    with ui.card().classes("w-full"):
+        update_firewall_level()
     asyncio.create_task(load_firewall_level())
 
 
+@ui.page('/login')
+def login_page(redirect_to: str = '/') -> Optional[RedirectResponse]:
+    def authenticate():
+        if (username_input.value, password_input.value) == (app_settings.username, app_settings.password):
+            app.storage.user.update({
+                'authenticated': True,
+                'username': username_input.value,
+            })
+            ui.notify("Login successful", color="positive")
+            ui.navigate.to(redirect_to)
+        else:
+            ui.notify("Invalid credentials", color="negative")
+
+    if app.storage.user.get('authenticated'):
+        return RedirectResponse(url='/')
+
+    with ui.card().classes('absolute-center'):
+        username_input = ui.input('Username').on('keydown.enter', authenticate)
+        password_input = ui.input('Password', password=True, password_toggle_button=True).on('keydown.enter', authenticate)
+        ui.button('Login', on_click=authenticate)
+    return None
+
+
 def start_webui():
-    ui.run(title="Switch ONU Firewall", host=webui.host, port=webui.port)
+    ui.run(title="Switch ONU Firewall", host=webui.host, port=webui.port, storage_secret=app_settings.storage_secret)
